@@ -6,12 +6,14 @@
  * Main custom CSS Grid timeline with columns, playhead, and event overlays
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { addDays } from 'date-fns';
 import toast from 'react-hot-toast';
+import { Xwrapper } from 'react-xarrows';
 import { ProjectSection } from './ProjectSection';
 import { EventMarker } from './EventMarker';
+import { DependencyArrows } from './DependencyArrows';
 import { 
   generateTimelineColumns, 
   getColumnWidth,
@@ -59,6 +61,16 @@ interface TimelineGridProps {
 
 export function TimelineGrid({ projects, tasks, events, onTaskUpdate }: TimelineGridProps) {
   const { timeRange, selectedProjectId, mode, addToHistory } = useViewStore();
+  
+  // Track expanded/collapsed state for each project
+  const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>(() => {
+    // Initialize all projects as expanded
+    const initial: Record<string, boolean> = { unassigned: true };
+    projects.forEach(p => {
+      initial[p.id] = true;
+    });
+    return initial;
+  });
   
   // Configure @dnd-kit sensors for drag & drop
   const sensors = useSensors(
@@ -344,7 +356,7 @@ export function TimelineGrid({ projects, tasks, events, onTaskUpdate }: Timeline
       sensors={sensors} 
       onDragEnd={handleDragEnd}
     >
-      <div className="relative flex flex-col h-full overflow-hidden">
+        <div className="relative flex flex-col h-full overflow-hidden">
           {/* Edit Mode Warning Banner */}
           {mode === 'edit' && (
           <div className="bg-orange-50 dark:bg-orange-900/20 border-b-2 border-orange-400 dark:border-orange-600 px-6 py-3">
@@ -388,11 +400,12 @@ export function TimelineGrid({ projects, tasks, events, onTaskUpdate }: Timeline
         className="flex-1 overflow-x-auto overflow-y-auto timeline-drag-container"
         data-timeline-container
       >
-        <div className="relative min-w-max">
-          {/* Timeline Header */}
-          <div className="sticky top-0 z-30 flex border-b-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900">
-            {/* Sidebar Header Space */}
-            <div className="sticky left-0 z-40 w-32 border-r border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900" />
+        <Xwrapper>
+          <div className="relative min-w-max">
+          {/* Timeline Header - Sticky on vertical scroll */}
+          <div className="sticky top-0 z-50 flex border-b-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900">
+            {/* Sidebar Header Space - Sticky on horizontal scroll, overlaps at corner */}
+            <div className="sticky left-0 z-[60] w-32 border-r border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900" />
             
             {/* Column Headers */}
             <div
@@ -490,6 +503,13 @@ export function TimelineGrid({ projects, tasks, events, onTaskUpdate }: Timeline
                     columns={columns}
                     columnWidth={columnWidth}
                     onTaskUpdate={onTaskUpdate}
+                    isExpanded={expandedProjects[project.id] ?? true}
+                    onToggleExpanded={() => {
+                      setExpandedProjects(prev => ({
+                        ...prev,
+                        [project.id]: !prev[project.id],
+                      }));
+                    }}
                   />
                 );
               })}
@@ -507,6 +527,13 @@ export function TimelineGrid({ projects, tasks, events, onTaskUpdate }: Timeline
                   columns={columns}
                   columnWidth={columnWidth}
                   onTaskUpdate={onTaskUpdate}
+                  isExpanded={expandedProjects.unassigned ?? true}
+                  onToggleExpanded={() => {
+                    setExpandedProjects(prev => ({
+                      ...prev,
+                      unassigned: !prev.unassigned,
+                    }));
+                  }}
                 />
               )}
             </div>
@@ -518,7 +545,14 @@ export function TimelineGrid({ projects, tasks, events, onTaskUpdate }: Timeline
               </div>
             )}
           </div>
-        </div>
+          
+          {/* Dependency Arrows - Inside grid container for proper coordinate system */}
+          <DependencyArrows 
+            tasks={tasks} 
+            expandedProjects={expandedProjects}
+          />
+          </div>
+        </Xwrapper>
       </div>
     </div>
     </DndContext>

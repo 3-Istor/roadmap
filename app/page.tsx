@@ -11,7 +11,6 @@ import { Header } from '@/components/layout/Header';
 import { ProjectFilter } from '@/components/filters/ProjectFilter';
 import { TimeRangeFilter } from '@/components/filters/TimeRangeFilter';
 import { TimelineGrid } from '@/components/timeline/TimelineGrid';
-import { DependencyArrows } from '@/components/timeline/DependencyArrows';
 import { CapacityChart } from '@/components/charts/CapacityChart';
 import { TaskModal } from '@/components/timeline/TaskModal';
 import { Download, RefreshCw } from 'lucide-react';
@@ -230,9 +229,6 @@ export default function DashboardPage() {
             events={data.events}
             onTaskUpdate={handleTaskUpdate}
           />
-          
-          {/* Dependency Arrows */}
-          <DependencyArrows tasks={data.tasks} />
         </div>
         
         {/* Capacity Chart */}

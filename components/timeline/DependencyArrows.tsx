@@ -1,94 +1,122 @@
 'use client';
 
-/**
- * Dependency Arrows Component
- * 
- * Draws SVG arrows between tasks using react-xarrows
- */
-
 import { useEffect, useState } from 'react';
-import Xarrow, { useXarrow, Xwrapper } from 'react-xarrows';
+import Xarrow, { useXarrow } from 'react-xarrows';
+import { useViewStore } from '@/lib/store/viewStore';
 
 interface Task {
   id: string;
+  project?: { id: string } | null;
+  startDate?: Date | null;
+  endDate?: Date | null;
+  track?: string;
   blocks: { id: string }[];
   blockedBy: { id: string }[];
 }
 
 interface DependencyArrowsProps {
   tasks: Task[];
+  expandedProjects: Record<string, boolean>;
 }
 
-export function DependencyArrows({ tasks }: DependencyArrowsProps) {
+export function DependencyArrows({ tasks, expandedProjects }: DependencyArrowsProps) {
   const updateXarrow = useXarrow();
-  const [mounted, setMounted] = useState(false);
-  
-  // Update arrows on scroll/resize
+  const { mode } = useViewStore();
+  const [domReady, setDomReady] = useState(true);
+
   useEffect(() => {
-    setMounted(true);
-    
-    const handleUpdate = () => {
-      updateXarrow();
-    };
-    
-    // Listen to scroll events on timeline container
-    const timelineContainer = document.querySelector('[data-timeline-container]');
-    if (timelineContainer) {
-      timelineContainer.addEventListener('scroll', handleUpdate);
-    }
-    
-    window.addEventListener('resize', handleUpdate);
-    
-    return () => {
-      if (timelineContainer) {
-        timelineContainer.removeEventListener('scroll', handleUpdate);
-      }
-      window.removeEventListener('resize', handleUpdate);
-    };
-  }, [updateXarrow]);
-  
-  if (!mounted) return null;
-  
-  // Build dependency arrows
-  const arrows: Array<{ start: string; end: string; key: string }> = [];
-  
-  tasks.forEach(task => {
-    // Draw arrows from this task to tasks it blocks
-    task.blocks.forEach(blockedTask => {
-      arrows.push({
-        start: `task-${task.id}`,
-        end: `task-${blockedTask.id}`,
-        key: `${task.id}-blocks-${blockedTask.id}`,
+    setDomReady(false);
+    const timer = setTimeout(() => setDomReady(true), 50);
+    return () => clearTimeout(timer);
+  }, [mode]);
+
+  useEffect(() => {
+    if (!domReady) return;
+
+    let rafId: number;
+    const triggerUpdate = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        updateXarrow();
       });
+    };
+
+    const container = document.querySelector('[data-timeline-container]');
+    if (container) container.addEventListener('scroll', triggerUpdate, { passive: true });
+    window.addEventListener('resize', triggerUpdate);
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (mode === 'edit' && e.buttons > 0) triggerUpdate();
+    };
+    window.addEventListener('pointermove', handlePointerMove, { passive: true });
+
+    return () => {
+      if (container) container.removeEventListener('scroll', triggerUpdate);
+      window.removeEventListener('resize', triggerUpdate);
+      window.removeEventListener('pointermove', handlePointerMove);
+      cancelAnimationFrame(rafId);
+    };
+  }, [domReady, mode, updateXarrow]);
+
+  if (!domReady) return null;
+
+  const isTaskVisible = (task: Task): boolean => {
+    const projectId = task.project?.id || 'unassigned';
+    return expandedProjects[projectId] ?? true;
+  };
+
+  const arrows: Array<{ 
+    start: string; 
+    end: string; 
+    key: string; 
+  }> = [];
+  
+  tasks.forEach(sourceTask => {
+    if (!isTaskVisible(sourceTask)) return;
+    
+    sourceTask.blocks.forEach(blockedTask => {
+      const targetTask = tasks.find(t => t.id === blockedTask.id);
+      
+      if (targetTask && isTaskVisible(targetTask)) {
+        const sStart = sourceTask.startDate?.getTime() || 0;
+        const sEnd = sourceTask.endDate?.getTime() || sourceTask.startDate?.getTime() || 0;
+        const tStart = targetTask.startDate?.getTime() || 0;
+        
+        const dynamicKey = `arrow-${sourceTask.id}-${targetTask.id}-${sStart}-${sEnd}-${tStart}-${sourceTask.track}-${targetTask.track}`;
+
+        arrows.push({
+          start: `task-${sourceTask.id}`,
+          end: `task-${targetTask.id}`,
+          key: dynamicKey,
+        });
+      }
     });
   });
-  
+
   return (
-    <Xwrapper>
+    <>
       {arrows.map(arrow => {
-        // Check if both elements exist
-        const startEl = document.getElementById(arrow.start);
-        const endEl = document.getElementById(arrow.end);
-        
+        const startEl = typeof document !== 'undefined' ? document.getElementById(arrow.start) : null;
+        const endEl = typeof document !== 'undefined' ? document.getElementById(arrow.end) : null;
         if (!startEl || !endEl) return null;
-        
+
         return (
           <Xarrow
-            key={arrow.key}
+            key={arrow.key} 
             start={arrow.start}
             end={arrow.end}
-            color="#6366f1" // Indigo color
+            startAnchor="right"
+            endAnchor="left"
+            color="#6366f1"
             strokeWidth={2}
-            headSize={6}
+            headSize={5}
             path="smooth"
-            showHead={true}
-            showTail={false}
-            curveness={0.6}
+            curveness={0.9}
             dashness={false}
             zIndex={5}
           />
         );
       })}
-    </Xwrapper>
+    </>
   );
 }

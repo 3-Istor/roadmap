@@ -6,7 +6,7 @@
  * Groups tracks by project with collapsible functionality
  */
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { TrackRow } from './TrackRow';
 import { type TimelineColumn } from '@/lib/utils/timeline';
@@ -38,6 +38,8 @@ interface ProjectSectionProps {
   tasks: Task[];
   columns: TimelineColumn[];
   columnWidth: string;
+  isExpanded: boolean;
+  onToggleExpanded: () => void;
   onTaskUpdate?: (taskId: string, updates: Partial<{ startDate: Date; endDate: Date | null; track: string }>) => void;
 }
 
@@ -50,8 +52,7 @@ const statusColors = {
   DONE: 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300',
 };
 
-export function ProjectSection({ project, tasks, columns, columnWidth, onTaskUpdate }: ProjectSectionProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+export function ProjectSection({ project, tasks, columns, columnWidth, isExpanded, onToggleExpanded, onTaskUpdate }: ProjectSectionProps) {
   const { mode } = useViewStore();
   const isEditMode = mode === 'edit';
   
@@ -78,7 +79,7 @@ export function ProjectSection({ project, tasks, columns, columnWidth, onTaskUpd
       <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
         {/* Project Name (Sticky) */}
         <button
-          onClick={() => setIsExpanded(!isExpanded)}
+          onClick={onToggleExpanded}
           className={cn(
             'project-header sticky left-0 z-20 w-32 px-4 py-3 text-left',
             'border-r border-gray-200 dark:border-gray-700',
