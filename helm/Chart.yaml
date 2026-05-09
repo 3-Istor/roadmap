@@ -1,5 +1,5 @@
 apiVersion: v2
-name: roadmap-dashboard
+name: roadmap
 description: A high-performance roadmap dashboard synced with Notion
 type: application
 version: 1.0.0

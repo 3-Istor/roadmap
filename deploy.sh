@@ -14,7 +14,7 @@ command -v helm >/dev/null 2>&1 || { echo "❌ helm is required but not installe
 
 # Configuration
 NAMESPACE="${NAMESPACE:-roadmap}"
-RELEASE_NAME="${RELEASE_NAME:-roadmap-dashboard}"
+RELEASE_NAME="${RELEASE_NAME:-roadmap}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 
 echo "📋 Configuration:"
@@ -60,11 +60,11 @@ echo ""
 echo "✅ Deployment complete!"
 echo ""
 echo "📊 Status:"
-kubectl get pods -n $NAMESPACE -l app.kubernetes.io/name=roadmap-dashboard
+kubectl get pods -n $NAMESPACE -l app.kubernetes.io/name=roadmap
 
 echo ""
 echo "🔍 Logs:"
-echo "   kubectl logs -n $NAMESPACE -l app.kubernetes.io/name=roadmap-dashboard -f"
+echo "   kubectl logs -n $NAMESPACE -l app.kubernetes.io/name=roadmap -f"
 echo ""
 echo "🌐 Access:"
 echo "   kubectl port-forward -n $NAMESPACE svc/$RELEASE_NAME 3000:3000"

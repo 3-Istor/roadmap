@@ -2,9 +2,9 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ include "roadmap-dashboard.fullname" . }}-sync
+  name: {{ include "roadmap.fullname" . }}-sync
   labels:
-    {{- include "roadmap-dashboard.labels" . | nindent 4 }}
+    {{- include "roadmap.labels" . | nindent 4 }}
     app.kubernetes.io/component: sync-cronjob
 spec:
   schedule: {{ .Values.cronjob.schedule | quote }}
@@ -16,7 +16,7 @@ spec:
       template:
         metadata:
           labels:
-            {{- include "roadmap-dashboard.selectorLabels" . | nindent 12 }}
+            {{- include "roadmap.selectorLabels" . | nindent 12 }}
             app.kubernetes.io/component: sync-cronjob
         spec:
           restartPolicy: {{ .Values.cronjob.restartPolicy }}
@@ -34,7 +34,7 @@ spec:
                 -H "x-cron-secret: ${CRON_SECRET}" \
                 -w "\n%{http_code}" \
                 -s \
-                http://{{ include "roadmap-dashboard.fullname" . }}:{{ .Values.service.port }}/api/sync/cron)
+                http://{{ include "roadmap.fullname" . }}:{{ .Values.service.port }}/api/sync/cron)
               
               http_code=$(echo "$response" | tail -n1)
               body=$(echo "$response" | sed '$d')

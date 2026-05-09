@@ -1,14 +1,14 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "roadmap-dashboard.name" -}}
+{{- define "roadmap.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
 */}}
-{{- define "roadmap-dashboard.fullname" -}}
+{{- define "roadmap.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -24,16 +24,16 @@ Create a default fully qualified app name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "roadmap-dashboard.chart" -}}
+{{- define "roadmap.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "roadmap-dashboard.labels" -}}
-helm.sh/chart: {{ include "roadmap-dashboard.chart" . }}
-{{ include "roadmap-dashboard.selectorLabels" . }}
+{{- define "roadmap.labels" -}}
+helm.sh/chart: {{ include "roadmap.chart" . }}
+{{ include "roadmap.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -43,17 +43,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "roadmap-dashboard.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "roadmap-dashboard.name" . }}
+{{- define "roadmap.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "roadmap.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "roadmap-dashboard.serviceAccountName" -}}
+{{- define "roadmap.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "roadmap-dashboard.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "roadmap.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}

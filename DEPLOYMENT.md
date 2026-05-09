@@ -72,7 +72,7 @@ Edit `helm/values.yaml`:
 ### 3. Deploy with Helm
 
 ```bash
-helm upgrade --install roadmap-dashboard ./helm \
+helm upgrade --install roadmap ./helm \
   --namespace roadmap \
   --create-namespace \
   --wait
@@ -85,7 +85,7 @@ helm upgrade --install roadmap-dashboard ./helm \
 kubectl get pods -n roadmap
 
 # Check logs
-kubectl logs -n roadmap -l app.kubernetes.io/name=roadmap-dashboard
+kubectl logs -n roadmap -l app.kubernetes.io/name=roadmap
 
 # Check CronJob
 kubectl get cronjobs -n roadmap
@@ -155,7 +155,7 @@ The app exposes health endpoints:
 
 ```bash
 # Application logs
-kubectl logs -n roadmap -l app.kubernetes.io/name=roadmap-dashboard -f
+kubectl logs -n roadmap -l app.kubernetes.io/name=roadmap -f
 
 # CronJob logs
 kubectl logs -n roadmap -l app.kubernetes.io/component=sync-cronjob
@@ -206,7 +206,7 @@ If pods are killed due to memory:
 Check CronJob logs:
 ```bash
 kubectl get jobs -n roadmap
-kubectl logs -n roadmap job/roadmap-dashboard-sync-xxxxx
+kubectl logs -n roadmap job/roadmap-sync-xxxxx
 ```
 
 Common issues:
@@ -257,7 +257,7 @@ kubectl exec -i -n roadmap postgresql-0 -- psql -U postgres roadmap < backup.sql
 ## Support
 
 For issues or questions:
-1. Check logs: `kubectl logs -n roadmap -l app.kubernetes.io/name=roadmap-dashboard`
+1. Check logs: `kubectl logs -n roadmap -l app.kubernetes.io/name=roadmap`
 2. Review GitHub Issues
 3. Check Notion API status
 4. Verify database connectivity

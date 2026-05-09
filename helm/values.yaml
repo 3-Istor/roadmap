@@ -1,10 +1,10 @@
-# Default values for roadmap-dashboard
+# Default values for roadmap
 # Optimized for <1GB RAM deployment on K3s
 
 replicaCount: 1
 
 image:
-  repository: your-registry/roadmap-dashboard
+  repository: your-registry/roadmap
   pullPolicy: IfNotPresent
   tag: "latest"
 

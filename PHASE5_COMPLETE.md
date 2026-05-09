@@ -231,24 +231,24 @@ resources:
 
 ```bash
 # Build image
-docker build -t roadmap-dashboard:test .
+docker build -t roadmap:test .
 
 # Run locally
 docker run -p 3000:3000 \
   -e DATABASE_URL="postgresql://..." \
   -e NOTION_API_KEY="secret_..." \
   -e NOTION_DATABASE_ID="..." \
-  roadmap-dashboard:test
+  roadmap:test
 ```
 
 ### Helm Dry Run
 
 ```bash
 # Validate templates
-helm template roadmap-dashboard ./helm --debug
+helm template roadmap ./helm --debug
 
 # Dry run
-helm install roadmap-dashboard ./helm --dry-run --debug
+helm install roadmap ./helm --dry-run --debug
 ```
 
 ### Deploy to K3s
@@ -263,13 +263,13 @@ kubectl create secret generic roadmap-secrets \
   --namespace=roadmap
 
 # Deploy
-helm upgrade --install roadmap-dashboard ./helm \
+helm upgrade --install roadmap ./helm \
   --namespace roadmap \
   --create-namespace
 
 # Verify
 kubectl get all -n roadmap
-kubectl logs -n roadmap -l app.kubernetes.io/name=roadmap-dashboard
+kubectl logs -n roadmap -l app.kubernetes.io/name=roadmap
 ```
 
 ## Production Checklist

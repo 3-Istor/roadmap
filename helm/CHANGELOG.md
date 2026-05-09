@@ -53,13 +53,13 @@ If you're upgrading from a previous version:
 
 3. **Deploy the updated chart**:
    ```bash
-   helm upgrade roadmap-dashboard ./helm -n roadmap
+   helm upgrade roadmap ./helm -n roadmap
    ```
 
 4. **Verify the deployment**:
    ```bash
    # Check pod logs for successful migration
-   kubectl logs -n roadmap -l app.kubernetes.io/name=roadmap-dashboard
+   kubectl logs -n roadmap -l app.kubernetes.io/name=roadmap
    
    # Should see:
    # ✅ PostgreSQL is ready and schema is synced!
