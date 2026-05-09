@@ -1,0 +1,158 @@
+# Default values for roadmap-dashboard
+# Optimized for <1GB RAM deployment on K3s
+
+replicaCount: 1
+
+image:
+  repository: your-registry/roadmap-dashboard
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: false
+  runAsUser: 0
+  fsGroup: 0
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: roadmap.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: roadmap-tls
+      hosts:
+        - roadmap.example.com
+
+# Resource limits optimized for <1GB RAM
+resources:
+  limits:
+    cpu: 500m
+    memory: 768Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+# Liveness and readiness probes
+livenessProbe:
+  httpGet:
+    path: /api/dashboard
+    port: 3000
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /api/dashboard
+    port: 3000
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Environment variables
+env:
+  - name: NODE_ENV
+    value: "production"
+  - name: NEXT_TELEMETRY_DISABLED
+    value: "1"
+  - name: DATABASE_URL
+    valueFrom:
+      secretKeyRef:
+        name: roadmap-secrets
+        key: database-url
+  - name: NOTION_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: roadmap-secrets
+        key: notion-api-key
+  - name: NOTION_MEMBERS_DB_ID
+    valueFrom:
+      secretKeyRef:
+        name: roadmap-secrets
+        key: notion-members-db-id
+  - name: NOTION_PROJECTS_DB_ID
+    valueFrom:
+      secretKeyRef:
+        name: roadmap-secrets
+        key: notion-projects-db-id
+  - name: NOTION_EVENTS_DB_ID
+    valueFrom:
+      secretKeyRef:
+        name: roadmap-secrets
+        key: notion-events-db-id
+  - name: NOTION_TASKS_DB_ID
+    valueFrom:
+      secretKeyRef:
+        name: roadmap-secrets
+        key: notion-tasks-db-id
+  - name: WEBHOOK_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: roadmap-secrets
+        key: webhook-secret
+  - name: CRON_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: roadmap-secrets
+        key: cron-secret
+  - name: NEXT_PUBLIC_APP_URL
+    value: "https://roadmap.example.com"
+
+# CronJob configuration for Notion sync
+cronjob:
+  enabled: true
+  schedule: "0 * * * *"  # Every hour
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  restartPolicy: OnFailure
+  resources:
+    limits:
+      cpu: 100m
+      memory: 64Mi
+    requests:
+      cpu: 10m
+      memory: 32Mi

@@ -1,0 +1,172 @@
+// Prisma Schema for Roadmap Dashboard
+// Maps Notion databases to PostgreSQL relational schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================================
+// MEMBER MODEL - Maps to Notion Members DB (3015aa43-1513-8063-9a47-e7763c2665aa)
+// ============================================================================
+model Member {
+  id              String   @id @default(cuid())
+  notionId        String   @unique // Notion page ID
+  name            String
+  phoneNumber     String?
+  profilePicture  String?  // URL to profile image
+  anniversary     DateTime?
+  
+  // Relations
+  assignedTasks   Task[]   @relation("AssignedMember")
+  events          Event[]  @relation("EventPersons")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([notionId])
+  @@map("members")
+}
+
+// ============================================================================
+// PROJECT MODEL - Maps to Notion Projects DB (3015aa43-1513-80e1-9c90-e819d3f8a20f)
+// ============================================================================
+model Project {
+  id          String        @id @default(cuid())
+  notionId    String        @unique
+  name        String
+  status      ProjectStatus @default(BACKLOG)
+  startDate   DateTime?
+  endDate     DateTime?
+  priority    Priority      @default(MEDIUM)
+  
+  // Relations
+  tasks       Task[]
+  events      Event[]
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  @@index([notionId])
+  @@index([status])
+  @@map("projects")
+}
+
+enum ProjectStatus {
+  BACKLOG
+  PAUSED
+  IN_PROGRESS
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+// ============================================================================
+// EVENT MODEL - Maps to Notion Events & Milestones DB (3595aa43-1513-80e3-a0bc-e7bd489a3151)
+// ============================================================================
+model Event {
+  id          String      @id @default(cuid())
+  notionId    String      @unique
+  name        String
+  startDate   DateTime
+  endDate     DateTime?
+  eventType   EventType
+  
+  // Relations
+  persons     Member[]    @relation("EventPersons")
+  projects    Project[]
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  @@index([notionId])
+  @@index([eventType])
+  @@index([startDate])
+  @@map("events")
+}
+
+enum EventType {
+  MANAGER_PERIOD
+  VACATION
+  KEY_DATE
+  DELIVERABLE
+  MILESTONE
+  ANNIVERSARY
+}
+
+// ============================================================================
+// TASK MODEL - Maps to Notion Tasks DB (3015aa43-1513-80d7-b337-f5cff2e673a4)
+// ============================================================================
+model Task {
+  id              String      @id @default(cuid())
+  notionId        String      @unique
+  title           String
+  status          TaskStatus  @default(NOT_STARTED)
+  track           Track
+  priority        Priority    @default(MEDIUM)
+  startDate       DateTime?
+  endDate         DateTime?
+  estimatedTime   Float?      // Hours
+  storyPoints     Int?
+  
+  // Relations
+  projectId       String?
+  project         Project?    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  assignedToId    String?
+  assignedTo      Member?     @relation("AssignedMember", fields: [assignedToId], references: [id], onDelete: SetNull)
+  
+  // Self-referential many-to-many for task dependencies
+  blocks          Task[]      @relation("TaskDependencies")
+  blockedBy       Task[]      @relation("TaskDependencies")
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@index([notionId])
+  @@index([projectId])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([track])
+  @@index([startDate])
+  @@map("tasks")
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum Track {
+  BUG
+  DESIGN
+  DOC
+  DEV
+}
+
+// ============================================================================
+// SYNC LOG MODEL - Track sync operations for debugging and monitoring
+// ============================================================================
+model SyncLog {
+  id          String      @id @default(cuid())
+  source      String      // "webhook" or "cron"
+  status      String      // "success" or "error"
+  message     String?
+  recordCount Int?        // Number of records synced
+  duration    Int?        // Milliseconds
+  
+  createdAt   DateTime    @default(now())
+  
+  @@index([createdAt])
+  @@map("sync_logs")
+}

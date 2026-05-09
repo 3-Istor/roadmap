@@ -1,0 +1,13 @@
+apiVersion: v2
+name: roadmap-dashboard
+description: A high-performance roadmap dashboard synced with Notion
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - roadmap
+  - notion
+  - dashboard
+  - gantt
+maintainers:
+  - name: Roadmap Team
