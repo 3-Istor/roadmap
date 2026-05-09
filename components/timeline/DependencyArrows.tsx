@@ -21,14 +21,15 @@ interface DependencyArrowsProps {
 
 export function DependencyArrows({ tasks, expandedProjects }: DependencyArrowsProps) {
   const updateXarrow = useXarrow();
-  const { mode } = useViewStore();
+  const { mode, timeRange } = useViewStore();
   const [domReady, setDomReady] = useState(true);
 
+  // Force re-render when mode or timeRange changes (layout changes)
   useEffect(() => {
     setDomReady(false);
     const timer = setTimeout(() => setDomReady(true), 50);
     return () => clearTimeout(timer);
-  }, [mode]);
+  }, [mode, timeRange]);
 
   useEffect(() => {
     if (!domReady) return;
@@ -41,8 +42,11 @@ export function DependencyArrows({ tasks, expandedProjects }: DependencyArrowsPr
       });
     };
 
-    const container = document.querySelector('[data-timeline-container]');
+    const container = document.querySelector('[data-timeline-body]');
+    const verticalContainer = document.getElementById('main-timeline-scroll'); // Récupère le scroll de la page
+    
     if (container) container.addEventListener('scroll', triggerUpdate, { passive: true });
+    if (verticalContainer) verticalContainer.addEventListener('scroll', triggerUpdate, { passive: true });
     window.addEventListener('resize', triggerUpdate);
 
     const handlePointerMove = (e: PointerEvent) => {
@@ -50,13 +54,20 @@ export function DependencyArrows({ tasks, expandedProjects }: DependencyArrowsPr
     };
     window.addEventListener('pointermove', handlePointerMove, { passive: true });
 
+    // Force initial update after DOM is ready and layout has settled
+    const initialUpdate = setTimeout(() => {
+      triggerUpdate();
+    }, 100);
+
     return () => {
       if (container) container.removeEventListener('scroll', triggerUpdate);
+      if (verticalContainer) verticalContainer.removeEventListener('scroll', triggerUpdate);
       window.removeEventListener('resize', triggerUpdate);
       window.removeEventListener('pointermove', handlePointerMove);
       cancelAnimationFrame(rafId);
+      clearTimeout(initialUpdate);
     };
-  }, [domReady, mode, updateXarrow]);
+  }, [domReady, mode, updateXarrow, timeRange]);
 
   if (!domReady) return null;
 

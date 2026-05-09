@@ -35,6 +35,12 @@ interface ViewState {
   timeRange: TimeRange;
   setTimeRange: (range: TimeRange) => void;
   
+  // Time navigation offset (how many periods forward/backward from today)
+  timeOffset: number;
+  nextPeriod: () => void;
+  prevPeriod: () => void;
+  resetTimeOffset: () => void;
+  
   // Project filter
   selectedProjectId: string | null;
   setSelectedProject: (projectId: string | null) => void;
@@ -42,6 +48,10 @@ interface ViewState {
   // Selected task for modal
   selectedTaskId: string | null;
   setSelectedTask: (taskId: string | null) => void;
+  
+  // Selected event for modal
+  selectedEventId: string | null;
+  setSelectedEvent: (eventId: string | null) => void;
   
   // Optimistic updates (for Phase 4 Edit Mode)
   optimisticUpdates: Map<string, any>;
@@ -64,8 +74,10 @@ export const useViewStore = create<ViewState>((set, get) => ({
   // Initial state
   mode: 'view',
   timeRange: 'month',
+  timeOffset: 0,
   selectedProjectId: null,
   selectedTaskId: null,
+  selectedEventId: null,
   optimisticUpdates: new Map(),
   history: [],
   historyIndex: -1,
@@ -77,11 +89,19 @@ export const useViewStore = create<ViewState>((set, get) => ({
   
   setMode: (mode) => set({ mode }),
   
-  setTimeRange: (timeRange) => set({ timeRange }),
+  setTimeRange: (timeRange) => set({ timeRange, timeOffset: 0 }), // Reset offset when changing range
+  
+  nextPeriod: () => set((state) => ({ timeOffset: state.timeOffset + 1 })),
+  
+  prevPeriod: () => set((state) => ({ timeOffset: state.timeOffset - 1 })),
+  
+  resetTimeOffset: () => set({ timeOffset: 0 }),
   
   setSelectedProject: (selectedProjectId) => set({ selectedProjectId }),
   
   setSelectedTask: (selectedTaskId) => set({ selectedTaskId }),
+  
+  setSelectedEvent: (selectedEventId) => set({ selectedEventId }),
   
   addOptimisticUpdate: (taskId, updates) => set((state) => {
     const newMap = new Map(state.optimisticUpdates);

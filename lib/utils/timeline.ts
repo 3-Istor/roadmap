@@ -12,10 +12,8 @@ import {
   addDays, 
   addWeeks,
   addMonths,
-  differenceInDays,
   format,
   isSameDay,
-  isWithinInterval,
 } from 'date-fns';
 import type { TimeRange } from '../store/viewStore';
 
@@ -32,43 +30,49 @@ export interface TaskPosition {
 }
 
 /**
- * Get the date range for the timeline based on time filter
+ * Get the date range for the timeline based on time filter and offset
  */
-export function getTimelineRange(timeRange: TimeRange): { start: Date; end: Date } {
+export function getTimelineRange(timeRange: TimeRange, offset: number = 0): { start: Date; end: Date } {
   const today = new Date();
+  today.setHours(0, 0, 0, 0); // Start of today
   
   switch (timeRange) {
     case 'week':
+      const weekStart = startOfWeek(addWeeks(today, offset), { weekStartsOn: 1 });
       return {
-        start: startOfWeek(today, { weekStartsOn: 1 }), // Monday
-        end: endOfWeek(today, { weekStartsOn: 1 }),
+        start: weekStart,
+        end: endOfWeek(weekStart, { weekStartsOn: 1 }),
       };
     
     case '2weeks':
-      const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+      // Start from today + offset, not start of week
+      const twoWeeksStart = addWeeks(today, offset * 2);
       return {
-        start: weekStart,
-        end: addDays(weekStart, 13), // 2 weeks = 14 days
+        start: twoWeeksStart,
+        end: addDays(twoWeeksStart, 13), // Today + 14 days
       };
     
     case 'month':
+      const monthStart = startOfMonth(addMonths(today, offset));
       return {
-        start: startOfMonth(today),
-        end: endOfMonth(today),
+        start: monthStart,
+        end: endOfMonth(monthStart),
       };
     
     case '3months':
-      const monthStart = startOfMonth(today);
+      // Start from today + offset, not start of month
+      const threeMonthsStart = addMonths(today, offset * 3);
       return {
-        start: monthStart,
-        end: addMonths(monthStart, 3),
+        start: threeMonthsStart,
+        end: addDays(threeMonthsStart, 89), // Today + 90 days
       };
     
     case 'year':
-      const yearStart = startOfMonth(today);
+      // Start from today + offset, not start of month
+      const yearStart = addMonths(today, offset * 12);
       return {
         start: yearStart,
-        end: addMonths(yearStart, 12),
+        end: addDays(yearStart, 364), // Today + 365 days
       };
     
     default:
@@ -80,10 +84,10 @@ export function getTimelineRange(timeRange: TimeRange): { start: Date; end: Date
 }
 
 /**
- * Generate timeline columns based on time range
+ * Generate timeline columns based on time range and offset
  */
-export function generateTimelineColumns(timeRange: TimeRange): TimelineColumn[] {
-  const { start, end } = getTimelineRange(timeRange);
+export function generateTimelineColumns(timeRange: TimeRange, offset: number = 0): TimelineColumn[] {
+  const { start, end } = getTimelineRange(timeRange, offset);
   const columns: TimelineColumn[] = [];
   const today = new Date();
   
@@ -141,28 +145,79 @@ export function calculateTaskPosition(
     return { gridColumnStart: 1, gridColumnEnd: 2, isVisible: false };
   }
   
-  const timelineStart = columns[0].date;
-  const timelineEnd = columns[columns.length - 1].date;
+  // Normalize all dates to start of day
+  const normalizedTaskStart = new Date(taskStart);
+  normalizedTaskStart.setHours(0, 0, 0, 0);
+  
+  const normalizedTaskEnd = taskEnd ? new Date(taskEnd) : new Date(taskStart);
+  normalizedTaskEnd.setHours(0, 0, 0, 0);
+  
+  const normalizedTimelineStart = new Date(columns[0].date);
+  normalizedTimelineStart.setHours(0, 0, 0, 0);
+  
+  const normalizedTimelineEnd = new Date(columns[columns.length - 1].date);
+  normalizedTimelineEnd.setHours(0, 0, 0, 0);
   
   // Check if task is within visible range
-  const taskEndDate = taskEnd || taskStart;
-  const isVisible = isWithinInterval(taskStart, { start: timelineStart, end: timelineEnd }) ||
-                    isWithinInterval(taskEndDate, { start: timelineStart, end: timelineEnd }) ||
-                    (taskStart < timelineStart && taskEndDate > timelineEnd);
+  const isVisible = (normalizedTaskStart >= normalizedTimelineStart && normalizedTaskStart <= normalizedTimelineEnd) ||
+                    (normalizedTaskEnd >= normalizedTimelineStart && normalizedTaskEnd <= normalizedTimelineEnd) ||
+                    (normalizedTaskStart < normalizedTimelineStart && normalizedTaskEnd > normalizedTimelineEnd);
   
   if (!isVisible) {
     return { gridColumnStart: 1, gridColumnEnd: 2, isVisible: false };
   }
   
-  // Calculate start column (1-indexed for CSS Grid)
-  const startDiff = differenceInDays(taskStart, timelineStart);
-  const gridColumnStart = Math.max(1, Math.min(startDiff + 1, columns.length + 1));
+  // Find start column by exact date match or closest match
+  let startColumnIndex = columns.findIndex(col => {
+    const colDate = new Date(col.date);
+    colDate.setHours(0, 0, 0, 0);
+    return colDate.getTime() === normalizedTaskStart.getTime();
+  });
   
-  // Calculate end column
-  const endDiff = taskEnd 
-    ? differenceInDays(taskEnd, timelineStart) + 1 // +1 to include end day
-    : startDiff + 1;
-  const gridColumnEnd = Math.max(gridColumnStart + 1, Math.min(endDiff + 1, columns.length + 2));
+  // If no exact match, find closest column
+  if (startColumnIndex === -1) {
+    startColumnIndex = 0;
+    let minDiff = Math.abs(normalizedTaskStart.getTime() - new Date(columns[0].date).setHours(0, 0, 0, 0));
+    
+    for (let i = 1; i < columns.length; i++) {
+      const colDate = new Date(columns[i].date);
+      colDate.setHours(0, 0, 0, 0);
+      const diff = Math.abs(normalizedTaskStart.getTime() - colDate.getTime());
+      
+      if (diff < minDiff) {
+        minDiff = diff;
+        startColumnIndex = i;
+      }
+    }
+  }
+  
+  // Find end column by exact date match or closest match
+  let endColumnIndex = columns.findIndex(col => {
+    const colDate = new Date(col.date);
+    colDate.setHours(0, 0, 0, 0);
+    return colDate.getTime() === normalizedTaskEnd.getTime();
+  });
+  
+  // If no exact match, find closest column
+  if (endColumnIndex === -1) {
+    endColumnIndex = 0;
+    let minDiff = Math.abs(normalizedTaskEnd.getTime() - new Date(columns[0].date).setHours(0, 0, 0, 0));
+    
+    for (let i = 1; i < columns.length; i++) {
+      const colDate = new Date(columns[i].date);
+      colDate.setHours(0, 0, 0, 0);
+      const diff = Math.abs(normalizedTaskEnd.getTime() - colDate.getTime());
+      
+      if (diff < minDiff) {
+        minDiff = diff;
+        endColumnIndex = i;
+      }
+    }
+  }
+  
+  // Convert to CSS Grid positions (1-indexed)
+  const gridColumnStart = Math.max(1, startColumnIndex + 1);
+  const gridColumnEnd = Math.max(gridColumnStart + 1, endColumnIndex + 2); // +2 because end is exclusive in CSS Grid
   
   return {
     gridColumnStart,
@@ -182,34 +237,69 @@ export function calculateEventPosition(
     return { columnIndex: 0, isVisible: false };
   }
   
-  const timelineStart = columns[0].date;
-  const timelineEnd = columns[columns.length - 1].date;
+  // Normalize event date to start of day in local timezone
+  const normalizedEventDate = new Date(eventDate);
+  normalizedEventDate.setHours(0, 0, 0, 0);
   
-  const isVisible = isWithinInterval(eventDate, { start: timelineStart, end: timelineEnd });
+  // Normalize timeline dates
+  const normalizedTimelineStart = new Date(columns[0].date);
+  normalizedTimelineStart.setHours(0, 0, 0, 0);
+  
+  const normalizedTimelineEnd = new Date(columns[columns.length - 1].date);
+  normalizedTimelineEnd.setHours(0, 0, 0, 0);
+  
+  // Check visibility using normalized dates
+  const isVisible = normalizedEventDate >= normalizedTimelineStart && normalizedEventDate <= normalizedTimelineEnd;
   
   if (!isVisible) {
     return { columnIndex: 0, isVisible: false };
   }
   
-  const daysDiff = differenceInDays(eventDate, timelineStart);
-  const columnIndex = Math.max(0, Math.min(daysDiff, columns.length - 1));
+  // Find the exact column that matches this date
+  const columnIndex = columns.findIndex(col => {
+    const colDate = new Date(col.date);
+    colDate.setHours(0, 0, 0, 0);
+    return colDate.getTime() === normalizedEventDate.getTime();
+  });
   
-  return { columnIndex, isVisible: true };
+  // If exact match found, use it
+  if (columnIndex >= 0) {
+    return { columnIndex, isVisible: true };
+  }
+  
+  // Fallback: find the closest column by comparing timestamps
+  let closestIndex = 0;
+  let minDiff = Math.abs(normalizedEventDate.getTime() - new Date(columns[0].date).setHours(0, 0, 0, 0));
+  
+  for (let i = 1; i < columns.length; i++) {
+    const colDate = new Date(columns[i].date);
+    colDate.setHours(0, 0, 0, 0);
+    const diff = Math.abs(normalizedEventDate.getTime() - colDate.getTime());
+    
+    if (diff < minDiff) {
+      minDiff = diff;
+      closestIndex = i;
+    }
+  }
+  
+  return { columnIndex: closestIndex, isVisible: true };
 }
 
 /**
  * Get column width based on time range
+ * Returns CSS grid template value - either fixed width or flexible 1fr
  */
 export function getColumnWidth(timeRange: TimeRange): string {
   switch (timeRange) {
     case 'week':
-    case '2weeks':
-      return '120px'; // Wide columns for daily view
+      return 'minmax(0, 1fr)'; // Evenly split 7 days across container
     case 'month':
-      return '80px'; // Medium columns for daily view
+      return 'minmax(0, 1fr)'; // Evenly split ~30 days across container
+    case '2weeks':
+      return '80px'; // Fixed width for scrolling
     case '3months':
     case 'year':
-      return '100px'; // Medium columns for weekly view
+      return '100px'; // Fixed width for scrolling
     default:
       return '80px';
   }

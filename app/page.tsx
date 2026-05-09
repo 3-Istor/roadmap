@@ -13,6 +13,7 @@ import { TimeRangeFilter } from '@/components/filters/TimeRangeFilter';
 import { TimelineGrid } from '@/components/timeline/TimelineGrid';
 import { CapacityChart } from '@/components/charts/CapacityChart';
 import { TaskModal } from '@/components/timeline/TaskModal';
+import { EventModal } from '@/components/timeline/EventModal';
 import { Download, RefreshCw } from 'lucide-react';
 import { useViewStore } from '@/lib/store/viewStore';
 
@@ -53,7 +54,7 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { selectedProjectId, selectedTaskId, setSelectedTask } = useViewStore();
+  const { selectedProjectId, selectedTaskId, setSelectedTask, selectedEventId, setSelectedEvent } = useViewStore();
   
   const fetchData = useCallback(async () => {
     try {
@@ -88,7 +89,7 @@ export default function DashboardPage() {
       setData(json);
     } catch (err) {
       console.error('Dashboard fetch error:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : 'any error');
     } finally {
       setLoading(false);
     }
@@ -183,60 +184,74 @@ export default function DashboardPage() {
     ? data.tasks.find(t => t.id === selectedTaskId)
     : null;
   
+  // Find selected event for modal
+  const selectedEvent = selectedEventId
+    ? data.events.find(e => e.id === selectedEventId)
+    : null;
+  
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+    <div className="h-screen w-full overflow-hidden bg-gray-50 dark:bg-gray-900 flex flex-col">
       <Header />
       
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Filters Bar */}
-        <div className="border-b bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 px-6 py-4">
-          <div className="flex items-end justify-between gap-6">
-            <div className="flex items-end gap-6">
-              <ProjectFilter projects={data.projects} />
-              <TimeRangeFilter />
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <button
-                onClick={fetchData}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                title="Refresh data"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Refresh
-              </button>
+        {/* Le conteneur de SCROLL englobe maintenant tout (Filtres, Timeline, Chart) */}
+        <div 
+          id="main-timeline-scroll"
+          className="flex-1 overflow-y-auto overflow-x-hidden relative"
+          ref={(el) => {
+            if (el) {
+              (el as any)._timelineScroll = true;
+            }
+          }}
+        >
+          {/* Filters Bar (Va maintenant scroller avec la page) */}
+          <div className="border-b bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 px-6 py-4">
+            <div className="flex items-end justify-between gap-6">
+              <div className="flex items-end gap-6">
+                <ProjectFilter projects={data.projects} />
+                <TimeRangeFilter />
+              </div>
               
-              <button
-                onClick={handleExport}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-500 text-white hover:bg-blue-600 rounded-lg transition-colors"
-                title="Export as PNG (Phase 4)"
-              >
-                <Download className="w-4 h-4" />
-                Export
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={fetchData}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  title="Refresh data"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Refresh
+                </button>
+                
+                <button
+                  onClick={handleExport}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-500 text-white hover:bg-blue-600 rounded-lg transition-colors"
+                  title="Export as PNG (Phase 4)"
+                >
+                  <Download className="w-4 h-4" />
+                  Export
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-        
-        {/* Timeline */}
-        <div 
-          className="flex-1 overflow-hidden"
-          data-timeline-container
-        >
-          <TimelineGrid
-            projects={data.projects}
-            tasks={data.tasks}
-            events={data.events}
-            onTaskUpdate={handleTaskUpdate}
-          />
-        </div>
-        
-        {/* Capacity Chart */}
-        <div className="border-t bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 px-6 py-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Capacity Pressure
-          </h2>
-          <CapacityChart tasks={data.tasks} />
+          
+          {/* Timeline Grid */}
+          <div className="w-full flex flex-col min-h-max">
+            <TimelineGrid
+              projects={data.projects}
+              tasks={data.tasks}
+              events={data.events}
+              onTaskUpdate={handleTaskUpdate}
+            />
+          </div>
+          
+          {/* Capacity Chart (Seulement visible tout en bas maintenant) */}
+          <div className="border-t bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 px-6 py-8 mt-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Capacity Pressure
+            </h2>
+            <CapacityChart tasks={data.tasks} />
+          </div>
+          
         </div>
       </main>
       
@@ -245,6 +260,14 @@ export default function DashboardPage() {
         <TaskModal
           task={selectedTask}
           onClose={() => setSelectedTask(null)}
+        />
+      )}
+      
+      {/* Event Details Modal */}
+      {selectedEvent && (
+        <EventModal
+          event={selectedEvent}
+          onClose={() => setSelectedEvent(null)}
         />
       )}
     </div>

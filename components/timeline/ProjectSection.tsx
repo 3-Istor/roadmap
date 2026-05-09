@@ -7,7 +7,7 @@
  */
 
 import { useMemo } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Star, Package, Flag } from 'lucide-react';
 import { TrackRow } from './TrackRow';
 import { type TimelineColumn } from '@/lib/utils/timeline';
 import { useViewStore } from '@/lib/store/viewStore';
@@ -36,11 +36,23 @@ interface Project {
 interface ProjectSectionProps {
   project: Project;
   tasks: Task[];
+  events: Array<{
+    event: {
+      id: string;
+      name: string;
+      eventType: string;
+      startDate: Date;
+      endDate?: Date | null;
+      projects?: { id: string; name: string }[];
+    };
+    position: { columnIndex: number; isVisible: boolean };
+  }>;
   columns: TimelineColumn[];
   columnWidth: string;
   isExpanded: boolean;
   onToggleExpanded: () => void;
   onTaskUpdate?: (taskId: string, updates: Partial<{ startDate: Date; endDate: Date | null; track: string }>) => void;
+  onEventClick?: (eventId: string) => void;
 }
 
 const tracks: Array<'BACKLOG' | 'BUG' | 'DESIGN' | 'DOC' | 'DEV'> = ['BACKLOG', 'BUG', 'DESIGN', 'DOC', 'DEV'];
@@ -52,7 +64,7 @@ const statusColors = {
   DONE: 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300',
 };
 
-export function ProjectSection({ project, tasks, columns, columnWidth, isExpanded, onToggleExpanded, onTaskUpdate }: ProjectSectionProps) {
+export function ProjectSection({ project, tasks, events, columns, columnWidth, isExpanded, onToggleExpanded, onTaskUpdate, onEventClick }: ProjectSectionProps) {
   const { mode } = useViewStore();
   const isEditMode = mode === 'edit';
   
@@ -106,8 +118,80 @@ export function ProjectSection({ project, tasks, columns, columnWidth, isExpande
           </div>
         </button>
         
-        {/* Timeline Header Space */}
-        <div className="flex-1" />
+        {/* Timeline Header Space with Events */}
+        <div 
+          className="flex-1 relative"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${columns.length}, ${columnWidth})`,
+          }}
+        >
+          {/* Render project-specific DELIVERABLE and MILESTONE events */}
+          {(() => {
+            // Group events by column index for stacking
+            const eventsByColumn = new Map<number, typeof events>();
+            
+            events.forEach(item => {
+              const col = item.position.columnIndex;
+              if (!eventsByColumn.has(col)) {
+                eventsByColumn.set(col, []);
+              }
+              eventsByColumn.get(col)!.push(item);
+            });
+            
+            // Render stacked events using Flexbox for perfect centering
+            const renderedEvents: React.ReactNode[] = [];
+            eventsByColumn.forEach((eventsInColumn, colIndex) => {
+              renderedEvents.push(
+                <div
+                  key={`proj-col-${colIndex}`}
+                  className="absolute top-1/2 -translate-y-1/2 flex items-center justify-center -space-x-2 pointer-events-auto w-full"
+                  style={{
+                    gridColumnStart: colIndex + 1,
+                    gridColumnEnd: colIndex + 2,
+                    zIndex: 10,
+                  }}
+                >
+                  {eventsInColumn.map((item, stackIndex) => {
+                    const { event } = item;
+                    
+                    // Determine icon and color based on event type
+                    let Icon = Flag;
+                    let colorClass = 'bg-blue-500 text-white'; // Default for KEY_DATE
+                    
+                    if (event.eventType === 'MILESTONE') {
+                      Icon = Star;
+                      colorClass = 'bg-yellow-500 text-white';
+                    } else if (event.eventType === 'DELIVERABLE') {
+                      Icon = Package;
+                      colorClass = 'bg-green-500 text-white';
+                    }
+                    
+                    return (
+                      <div
+                        key={event.id}
+                        className={cn(
+                          'w-6 h-6 rounded-full flex items-center justify-center shadow-md hover:scale-110 transition-transform cursor-pointer border-2 border-white dark:border-gray-900',
+                          colorClass
+                        )}
+                        style={{ zIndex: 10 + stackIndex }}
+                        title={`${event.name} (${event.eventType})`}
+                        onClick={(e) => {
+                          e.stopPropagation(); 
+                          if (onEventClick) onEventClick(event.id);
+                        }}
+                      >
+                        <Icon className="w-3 h-3" />
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            });
+            
+            return renderedEvents;
+          })()}
+        </div>
       </div>
       
       {/* Track Rows */}

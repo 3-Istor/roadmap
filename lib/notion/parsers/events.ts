@@ -42,7 +42,7 @@ export function parseEvent(page: NotionPage): ParsedEvent | null {
 
     // Extract relations
     const personIds = extractRelationIds(properties, 'Persons');
-    const projectIds = extractRelationIds(properties, 'Projects');
+    const projectIds = extractRelationIds(properties, '🚀 Projects');
 
     return {
       notionId: id,
