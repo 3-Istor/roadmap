@@ -121,13 +121,15 @@ export function DraggableTaskBlock({
     document.body.style.userSelect = 'none';
   }, [isEditMode, task.startDate, gridColumnStart]);
   
-  // Handle mouse move (resize only)
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isResizing && !isResizingLeft) return;
     
+    const element = document.getElementById(`task-${task.id}`);
+    const gridElement = element?.parentElement;
+    const realColumnWidth = gridElement ? (gridElement.clientWidth / columns.length) : 80;
+    
     const deltaX = e.clientX - dragStartX.current;
-    const columnWidthPx = parseFloat(columnWidth);
-    const columnsDelta = Math.round(deltaX / columnWidthPx);
+    const columnsDelta = Math.round(deltaX / realColumnWidth);
     
     if (isResizing) {
       const newEnd = Math.max(
@@ -148,7 +150,7 @@ export function DraggableTaskBlock({
       );
       setTempColumnStart(newStart);
     }
-  }, [isResizing, isResizingLeft, gridColumnStart, gridColumnEnd, columns.length, columnWidth]);
+  }, [isResizing, isResizingLeft, gridColumnStart, gridColumnEnd, columns.length, task.id]);
   
   // Handle mouse up (end resize)
   const handleMouseUp = useCallback(async () => {

@@ -250,57 +250,41 @@ export function TimelineGrid({ projects, tasks, events, onTaskUpdate }: Timeline
     // Prepare updates
     const updates: Partial<{ startDate: Date; endDate: Date | null; track: string }> = {};
     
+    const firstGrid = document.querySelector('.flex-1[style*="grid-template-columns"]');
+    const realColumnWidthPx = firstGrid ? (firstGrid.clientWidth / columns.length) : 80;
+    
     // Handle horizontal shift (time change)
     if (task.startDate) {
-      // Task already has a date - shift it
-      const columnWidthPx = parseFloat(columnWidth);
-      const daysShifted = Math.round(delta.x / columnWidthPx);
+      const daysShifted = Math.round(delta.x / realColumnWidthPx);
       
       if (daysShifted !== 0) {
         const newStartDate = addDays(task.startDate, daysShifted);
         const newEndDate = task.endDate ? addDays(task.endDate, daysShifted) : null;
         
-        updates.startDate = newStartDate;
-        updates.endDate = newEndDate;
+        if (!isNaN(newStartDate.getTime())) {
+          updates.startDate = newStartDate;
+          updates.endDate = newEndDate;
+        }
       }
     } else {
-      // Task has no date - assign one based on ABSOLUTE drop position
-      // For BACKLOG tasks, we need to calculate from the actual grid column position
-      if (columns.length > 0 && dragData) {
-        const columnWidthPx = parseFloat(columnWidth);
+      if (columns.length > 0 && firstGrid) {
+        const gridRect = firstGrid.getBoundingClientRect();
+        const dropLeft = active.rect.current.translated?.left || 0;
         
-        // Calculate which column the task was dropped on
-        // dragData.gridColumnStart is where it started (in BACKLOG)
-        // delta.x is how far it moved
-        const pixelsMoved = delta.x;
-        const columnsMoved = Math.round(pixelsMoved / columnWidthPx);
+        const offsetX = dropLeft - gridRect.left;
         
-        // The new column index (1-based for CSS grid)
-        const targetColumnIndex = Math.max(0, dragData.gridColumnStart + columnsMoved - 1);
+        const droppedColumnIndex = Math.floor(offsetX / realColumnWidthPx);
+        const safeIndex = Math.max(0, Math.min(columns.length - 1, droppedColumnIndex));
+        const newStartDate = columns[safeIndex].date;
         
-        // Get the date for that column
-        const targetColumn = columns[Math.min(targetColumnIndex, columns.length - 1)];
-        const newStartDate = targetColumn ? targetColumn.date : columns[0].date;
-        
-        // Default to same-day task (1 day duration, like in backlog)
-        const newEndDate = newStartDate;
-        
-        updates.startDate = newStartDate;
-        updates.endDate = newEndDate;
-        
-        console.log('📅 Assigning date to task without date:', {
-          gridColumnStart: dragData.gridColumnStart,
-          pixelsMoved,
-          columnsMoved,
-          targetColumnIndex,
-          newStartDate,
-          newEndDate,
-        });
+        if (!isNaN(newStartDate.getTime())) {
+          updates.startDate = newStartDate;
+          updates.endDate = newStartDate; 
+        }
       }
     }
     
-    // Handle vertical shift (track change) based on deltaY
-    const TRACK_HEIGHT = 76; // 60px + borders/padding
+    const TRACK_HEIGHT = 76; 
     const tracksShifted = Math.round(delta.y / TRACK_HEIGHT);
     
     console.log('🔍 Track calculation:', {
