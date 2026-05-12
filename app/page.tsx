@@ -54,6 +54,7 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
   const { selectedProjectId, selectedTaskId, setSelectedTask, selectedEventId, setSelectedEvent } = useViewStore();
   
   const fetchData = useCallback(async () => {
@@ -136,6 +137,34 @@ export default function DashboardPage() {
       window.removeEventListener('taskOptimisticUpdate', handleOptimisticUpdate);
     };
   }, [fetchData]);
+  
+  // Force sync from Notion
+  const handleForceSync = async () => {
+    try {
+      setSyncing(true);
+      const response = await fetch('/api/sync/force', {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Sync failed');
+      }
+      
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        // Refresh data after successful sync
+        await fetchData();
+      } else {
+        throw new Error(result.message || 'Sync failed');
+      }
+    } catch (err) {
+      console.error('Force sync error:', err);
+      setError(err instanceof Error ? err.message : 'Sync failed');
+    } finally {
+      setSyncing(false);
+    }
+  };
   
   // Export timeline as PNG (Phase 4)
   const handleExport = () => {
@@ -220,6 +249,16 @@ export default function DashboardPage() {
                 >
                   <RefreshCw className="w-4 h-4" />
                   Refresh
+                </button>
+                
+                <button
+                  onClick={handleForceSync}
+                  disabled={syncing}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-500 hover:bg-purple-600 disabled:bg-purple-300 disabled:cursor-not-allowed rounded-lg transition-colors"
+                  title="Force sync from Notion"
+                >
+                  <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                  {syncing ? 'Syncing...' : 'Force Sync'}
                 </button>
                 
                 <button
