@@ -40,7 +40,7 @@ async function fetchAllPages(databaseId: string): Promise<NotionPage[]> {
           return false;
         }
         // Exclude archived pages and pages in trash
-        const page = result as unknown;
+        const page = result as any;
         if (page.archived || page.in_trash) {
           console.log(`⏭️  Skipping archived/deleted page: ${page.id}`);
           return false;

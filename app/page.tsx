@@ -229,7 +229,7 @@ export default function DashboardPage() {
           className="flex-1 overflow-y-auto overflow-x-hidden relative"
           ref={(el) => {
             if (el) {
-              (el as unknown)._timelineScroll = true;
+              (el as any)._timelineScroll = true;
             }
           }}
         >
