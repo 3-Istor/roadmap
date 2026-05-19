@@ -23,11 +23,18 @@ export function parseTask(page: NotionPage): ParsedTask | null {
   try {
     const { id, properties } = page;
 
+    // Check if page is archived (additional safety check)
+    const pageData = page as any;
+    if (pageData.archived || pageData.in_trash) {
+      console.log(`⏭️  Skipping archived task: ${id}`);
+      return null;
+    }
+
     // Extract required fields
     const title = extractTitle(properties, 'Title');
     
-    if (!title || title === 'Untitled') {
-      console.warn(`Skipping task ${id}: missing title`);
+    if (!title || title === 'Untitled' || title.trim() === '') {
+      console.warn(`⏭️  Skipping task ${id}: missing or empty title`);
       return null;
     }
 

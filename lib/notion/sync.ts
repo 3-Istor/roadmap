@@ -15,6 +15,7 @@ import type { NotionPage, SyncResult } from './types';
 
 /**
  * Fetch all pages from a Notion database with pagination
+ * Filters out archived/deleted pages
  */
 async function fetchAllPages(databaseId: string): Promise<NotionPage[]> {
   const pages: NotionPage[] = [];
@@ -32,9 +33,20 @@ async function fetchAllPages(databaseId: string): Promise<NotionPage[]> {
       page_size: 100, // Max page size
     });
 
-    // Filter for page objects only
+    // Filter for page objects only and exclude archived/deleted pages
     const pageResults = response.results.filter(
-      (result: unknown): result is NotionPage => result !== null && typeof result === 'object' && 'properties' in result
+      (result: unknown): result is NotionPage => {
+        if (!result || typeof result !== 'object' || !('properties' in result)) {
+          return false;
+        }
+        // Exclude archived pages and pages in trash
+        const page = result as unknown;
+        if (page.archived || page.in_trash) {
+          console.log(`⏭️  Skipping archived/deleted page: ${page.id}`);
+          return false;
+        }
+        return true;
+      }
     );
 
     pages.push(...pageResults);
@@ -42,6 +54,7 @@ async function fetchAllPages(databaseId: string): Promise<NotionPage[]> {
     startCursor = response.next_cursor || undefined;
   }
 
+  console.log(`✅ Fetched ${pages.length} active pages from database ${databaseId}`);
   return pages;
 }
 
@@ -119,6 +132,26 @@ async function syncProjects(): Promise<{ count: number; errors: string[] }> {
     );
 
     await Promise.all(operations);
+
+    // Cleanup: Delete projects that are no longer in Notion
+    try {
+      const notionProjectIds = parsedProjects.map(p => p.notionId);
+      const deletedProjects = await prisma.project.deleteMany({
+        where: {
+          notionId: {
+            notIn: notionProjectIds,
+          },
+        },
+      });
+      
+      if (deletedProjects.count > 0) {
+        console.log(`🗑️  Cleaned up ${deletedProjects.count} archived/deleted projects`);
+      }
+    } catch (error) {
+      const errorMsg = `Project cleanup failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      console.error(errorMsg);
+      errors.push(errorMsg);
+    }
 
     return { count: parsedProjects.length, errors };
   } catch (error) {
@@ -299,6 +332,26 @@ async function syncTasks(): Promise<{ count: number; errors: string[] }> {
         console.error(errorMsg);
         errors.push(errorMsg);
       }
+    }
+
+    // Pass 3: Cleanup - Delete tasks that are no longer in Notion (archived/deleted)
+    try {
+      const notionTaskIds = parsedTasks.map(t => t.notionId);
+      const deletedTasks = await prisma.task.deleteMany({
+        where: {
+          notionId: {
+            notIn: notionTaskIds,
+          },
+        },
+      });
+      
+      if (deletedTasks.count > 0) {
+        console.log(`🗑️  Cleaned up ${deletedTasks.count} archived/deleted tasks`);
+      }
+    } catch (error) {
+      const errorMsg = `Task cleanup failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      console.error(errorMsg);
+      errors.push(errorMsg);
     }
 
     return { count: parsedTasks.length, errors };
