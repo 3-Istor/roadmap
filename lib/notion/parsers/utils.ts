@@ -114,6 +114,10 @@ export function extractSelect(properties: NotionProperties, key: string): string
     if (prop?.type === 'select' && prop.select?.name) {
       return prop.select.name;
     }
+    // Also handle 'status' type (Notion's native status property)
+    if (prop?.type === 'status' && prop.status?.name) {
+      return prop.status.name;
+    }
     return undefined;
   } catch {
     return undefined;
@@ -167,13 +171,39 @@ export function mapProjectStatus(notionStatus?: string): 'BACKLOG' | 'PAUSED' | 
  * Map Notion task status to Prisma enum
  */
 export function mapTaskStatus(notionStatus?: string): 'NOT_STARTED' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' {
+  if (!notionStatus) {
+    return 'NOT_STARTED';
+  }
+  
+  // Normalize the status string (trim and lowercase for comparison)
+  const normalized = notionStatus.trim().toLowerCase();
+  
   const statusMap: Record<string, 'NOT_STARTED' | 'IN_PROGRESS' | 'REVIEW' | 'DONE'> = {
-    'Not Started': 'NOT_STARTED',
-    'In progress': 'IN_PROGRESS',
-    'Review': 'REVIEW',
-    'Done': 'DONE',
+    'not started': 'NOT_STARTED',
+    'not-started': 'NOT_STARTED',
+    'todo': 'NOT_STARTED',
+    'to do': 'NOT_STARTED',
+    'in progress': 'IN_PROGRESS',
+    'in-progress': 'IN_PROGRESS',
+    'inprogress': 'IN_PROGRESS',
+    'doing': 'IN_PROGRESS',
+    'review': 'REVIEW',
+    'blocked': 'REVIEW',
+    'in review': 'REVIEW',
+    'done': 'DONE',
+    'completed': 'DONE',
+    'complete': 'DONE',
+    'finished': 'DONE',
   };
-  return statusMap[notionStatus || ''] || 'NOT_STARTED';
+  
+  const mapped = statusMap[normalized];
+  
+  if (!mapped) {
+    console.warn(`⚠️ Unknown task status from Notion: "${notionStatus}" - defaulting to NOT_STARTED`);
+    return 'NOT_STARTED';
+  }
+  
+  return mapped;
 }
 
 /**
