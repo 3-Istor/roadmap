@@ -12,17 +12,27 @@ COPY package.json package-lock.json ./
 # Install ALL dependencies (including devDependencies needed for build)
 RUN npm ci
 
+# Copy Prisma schema and generate client in deps stage
+COPY prisma ./prisma
+COPY prisma.config.ts ./prisma.config.ts
+
+# Set Prisma engine type for cross-platform builds
+ENV PRISMA_CLI_BINARY_TARGETS="native,linux-arm64-openssl-3.0.x,debian-openssl-3.0.x"
+ENV CHECKPOINT_DISABLE=1
+
+# Generate Prisma Client
+RUN npx prisma generate
+
 # Stage 2: Builder
 FROM node:26-alpine AS builder
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
-# Copy dependencies from deps stage
+# Copy dependencies and generated Prisma client from deps stage
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/prisma ./prisma
+COPY --from=deps /app/prisma.config.ts ./prisma.config.ts
 COPY . .
-
-# Generate Prisma Client
-RUN npx prisma generate
 
 # Build Next.js app with standalone output
 ENV NEXT_TELEMETRY_DISABLED=1
