@@ -716,7 +716,9 @@ export function TimelineGrid({ projects, tasks, events, onTaskUpdate }: Timeline
                   <div
                     className="absolute top-0 bottom-0 w-0.5 bg-blue-500 z-10 pointer-events-none"
                     style={{
-                      left: `calc(8rem + ${todayColumnIndex} * ${columnWidth} + ${columnWidth} / 2)`,
+                      left: isFlexibleWidth 
+                        ? `calc(8rem + (100% - 8rem) * ${(todayColumnIndex + 0.5) / columns.length})`
+                        : `calc(8rem + ${todayColumnIndex} * ${columnWidth} + ${columnWidth} / 2)`,
                     }}
                   >
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-3 bg-blue-500 rounded-full" />
