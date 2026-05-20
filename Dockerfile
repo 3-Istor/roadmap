@@ -17,7 +17,7 @@ COPY prisma ./prisma
 COPY prisma.config.ts ./prisma.config.ts
 
 # Set Prisma engine type for cross-platform builds
-ENV PRISMA_CLI_BINARY_TARGETS="native,linux-arm64-openssl-3.0.x,debian-openssl-3.0.x"
+ENV PRISMA_CLI_BINARY_TARGETS="linux-musl-openssl-3.0.x,linux-arm64-openssl-3.0.x,debian-openssl-3.0.x"
 ENV CHECKPOINT_DISABLE=1
 
 # Generate Prisma Client
