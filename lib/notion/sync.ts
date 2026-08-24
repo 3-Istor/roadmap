@@ -22,13 +22,20 @@ async function fetchAllPages(databaseId: string): Promise<NotionPage[]> {
   let hasMore = true;
   let startCursor: string | undefined = undefined;
 
+  await rateLimiter.throttle();
+  // Notion API 2025-09-03+: databases now expose one or more data sources,
+  // and querying happens against a data source, not the database itself.
+  const database = await notion.databases.retrieve({ database_id: databaseId });
+  const dataSourceId = 'data_sources' in database ? database.data_sources[0]?.id : undefined;
+  if (!dataSourceId) {
+    throw new Error(`Database ${databaseId} has no data sources`);
+  }
+
   while (hasMore) {
     await rateLimiter.throttle();
 
-    // Type assertion for Notion SDK compatibility
-    // @ts-expect-error - Notion SDK type compatibility issue
-    const response = await (notion.databases as unknown).query({
-      database_id: databaseId,
+    const response = await notion.dataSources.query({
+      data_source_id: dataSourceId,
       start_cursor: startCursor,
       page_size: 100, // Max page size
     });
